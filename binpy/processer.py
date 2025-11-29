@@ -44,7 +44,7 @@ def process(file):
                 temp+=x
             
         
-        #print(blocks)
+        
     import os
 
     
@@ -54,6 +54,7 @@ def process(file):
     bin_path = os.path.join(script_dir, "BIN.txt")
     max_scope = 0
     curr_scope = "0"
+    in_string = False
     with open(bin_path, "r+") as f:
         file = mmap.mmap(f.fileno(), 0)
         
@@ -62,7 +63,7 @@ def process(file):
             for char in statement:
                 
                 if char in formaters:
-                    #print(char)
+                    
                     statement_temp+=" "+char+" "
                 else:
                     statement_temp+=char
@@ -73,26 +74,30 @@ def process(file):
             found_var = ""
             function = ""
             for word in range(len(parsed)):
-                
-                if parsed[word] in list(class_mems.keys()):
+                if parsed[word] == '"' or parsed[word] == "'":
+                    if in_string == False:
+                        in_string = True
+                    else:
+                        in_string = False
+                if parsed[word] in list(class_mems.keys()) and not in_string:
                     EVN = parsed[word]
                     continue
                 if EVN!="":
                     register[parsed[word]+'?'+curr_scope] = [EVN, class_mems.get(EVN)[3]]
                     class_mems.get(EVN)[3]+=class_mems.get(EVN)[2]
                     EVN = ""
-                if parsed[word] == ')':
+                if parsed[word] == ')'  and not in_string:
                     function == ""
-                if parsed[word] == '(':
+                if parsed[word] == '(' and not in_string:
                     if parsed[word-1] not in nonMethods:
                         function = parsed[word-1]
                         continue
                              
                 if function != "":
-                    if function == "printf":
+                    if function == "printlnf":
                         funcLoopBI = 0
                         varNameBI = ""
-                        #print(parsed[word])
+                        
                         checkBI = ""
                         for comb in range(len(parsed)-word):
                             checkBI+=parsed[word+comb]
@@ -106,17 +111,54 @@ def process(file):
                         if format_specifier == '%d':
                             
                             print(int(file[register.get(found2)[1]+1:register.get(found2)[1]+class_mems.get(register.get(found2)[0])[2]+1],2))
+                        function=""
+                    if function == "printf":
+                        funcLoopBI = 0
+                        varNameBI = ""
+                        
+                        checkBI = ""
+                        for comb in range(len(parsed)-word):
+                            checkBI+=parsed[word+comb]
+                        
+                        while checkBI[funcLoopBI]!=",":
+                            if parsed[word][funcLoopBI]!=" ":
+                                varNameBI+=checkBI[funcLoopBI]
+                            funcLoopBI+=1
+                        found2 = check_scopes(varNameBI)
+                        format_specifier = checkBI[funcLoopBI+1:funcLoopBI+3].replace(" ", "")
+                        if format_specifier == '%d':
+                            
+                            print(int(file[register.get(found2)[1]+1:register.get(found2)[1]+class_mems.get(register.get(found2)[0])[2]+1],2), end = "")
+                        function=""
+                    if function == "print":
+                        printed=""
+                        if parsed[word] == '"':
+                            for print_inc in range(word+1, len(parsed)):
+                                if parsed[print_inc] == '"':
+                                    break
+                                printed+=parsed[print_inc]+" "
+                        print(printed, end="")
+                        function=""
+                    if function == "println":
+                        printed=""
+                        if parsed[word] == '"':
+                            for print_inc in range(word+1, len(parsed)):
+                                if parsed[print_inc] == '"':
+                                    break
+                                printed+=parsed[print_inc]+" "
+                        print(printed)
+                        function=""
                     funcLoopBI=0
                     varNameBI=""
-                    function=""
+                    
                     continue
-                if parsed[word] == '{':
+                if parsed[word] == '{' and not in_string:
                     curr_scope += str(max_scope+1)
                     max_scope += 1
-                if parsed[word] == '}':
+                if parsed[word] == '}' and not in_string:
                     curr_scope = curr_scope[0:len(curr_scope)-1]
                 
-                if parsed[word] == '=':
+                if parsed[word] == '=' and not in_string:
                     change = bin(int(parsed[word+1]))[2:len(bin(int(parsed[word+1])))]
                     inc_change = 0
                     found1 = check_scopes(parsed[word-1])
@@ -134,7 +176,6 @@ def process(file):
                         else:
                              
                             
-                            #print(binary, change[inc_change])
                             file[binary:binary+1] = change[inc_change].encode('utf-8')
                             changes.append(binary)
                             
